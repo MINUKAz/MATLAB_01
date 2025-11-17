@@ -22,57 +22,28 @@ subplot(2,2,1);
 plotperform(tr);
 title('Training Performance');
 
-% Training performance over epochs (replacement for ploterrhist)
+% Error histogram
 subplot(2,2,2);
-if isfield(tr, 'perf')
-    plot(tr.epoch, tr.perf, 'LineWidth', 2, 'Color', 'blue');
-    hold on;
-    if isfield(tr, 'vperf')
-        plot(tr.epoch, tr.vperf, 'LineWidth', 2, 'Color', 'red');
-        legend('Training', 'Validation', 'Location', 'best');
-    else
-        legend('Training', 'Location', 'best');
-    end
-    title('Performance Over Epochs');
-    xlabel('Epoch');
-    ylabel('Cross-Entropy Loss');
-    grid on;
-else
-    text(0.5, 0.5, 'Performance data not available', ...
-         'HorizontalAlignment', 'center', 'FontSize', 12);
-    title('Performance Plot');
-    axis off;
-end
+ploterrhist(tr);
+title('Error Histogram');
 
 % Authentication scores distribution (for first user)
 subplot(2,2,3);
-if ~isempty(authentication_results) && isfield(authentication_results, 'genuine_scores')
+if ~isempty(authentication_results)
     user1 = authentication_results(1);
-    if ~isempty(user1.genuine_scores) && ~isempty(user1.impostor_scores)
-        histogram(user1.genuine_scores, 'Normalization', 'probability', 'FaceColor', 'g', 'EdgeColor', 'none');
-        hold on;
-        histogram(user1.impostor_scores, 'Normalization', 'probability', 'FaceColor', 'r', 'EdgeColor', 'none');
-        xlabel('Authentication Score');
-        ylabel('Probability');
-        title('User 1: Genuine vs Impostor Scores');
-        legend('Genuine', 'Impostor');
-        grid on;
-    else
-        text(0.5, 0.5, 'No authentication scores available', ...
-             'HorizontalAlignment', 'center', 'FontSize', 12);
-        title('Authentication Scores');
-        axis off;
-    end
-else
-    text(0.5, 0.5, 'Authentication results not available', ...
-         'HorizontalAlignment', 'center', 'FontSize', 12);
-    title('Authentication Analysis');
-    axis off;
+    histogram(user1.genuine_scores, 'Normalization', 'probability', 'FaceColor', 'g', 'EdgeColor', 'none');
+    hold on;
+    histogram(user1.impostor_scores, 'Normalization', 'probability', 'FaceColor', 'r', 'EdgeColor', 'none');
+    xlabel('Authentication Score');
+    ylabel('Probability');
+    title('User 1: Genuine vs Impostor Scores');
+    legend('Genuine', 'Impostor');
+    grid on;
 end
 
 % Summary statistics
 subplot(2,2,4);
-if ~isempty(authentication_results) && isfield(authentication_results, 'num_genuine')
+if ~isempty(authentication_results)
     avg_genuine = mean([authentication_results.num_genuine]);
     avg_impostor = mean([authentication_results.num_impostor]);
     
@@ -81,43 +52,13 @@ if ~isempty(authentication_results) && isfield(authentication_results, 'num_genu
     ylabel('Average Samples per User');
     title('Sample Distribution');
     grid on;
-    
-    % Add value labels on bars
-    text(1, avg_genuine + 0.1, sprintf('%.1f', avg_genuine), ...
-         'HorizontalAlignment', 'center', 'FontWeight', 'bold');
-    text(2, avg_impostor + 0.1, sprintf('%.1f', avg_impostor), ...
-         'HorizontalAlignment', 'center', 'FontWeight', 'bold');
-else
-    % Display training time if available
-    if isfield(tr, 'time') && ~isempty(tr.time)
-        training_time = tr.time(end);
-        text(0.5, 0.7, sprintf('Training Time: %.1f seconds', training_time), ...
-             'HorizontalAlignment', 'center', 'FontSize', 14, 'FontWeight', 'bold');
-    end
-    
-    % Display final performance
-    text(0.5, 0.5, sprintf('Final Accuracy: %.2f%%', accuracy), ...
-         'HorizontalAlignment', 'center', 'FontSize', 16, 'FontWeight', 'bold', 'Color', 'blue');
-    
-    text(0.5, 0.3, 'Excellent Performance!', ...
-         'HorizontalAlignment', 'center', 'FontSize', 14, 'FontWeight', 'bold', 'Color', 'green');
-    
-    title('Training Summary');
-    axis off;
 end
 
 fprintf('\n=== ANALYSIS COMPLETE ===\n');
 fprintf('Key metrics:\n');
 fprintf('  - Test Accuracy: %.2f%%\n', accuracy);
-if isfield(authentication_results, 'num_genuine')
-    fprintf('  - Number of Users: %d\n', length(authentication_results));
-end
+fprintf('  - Number of Users: %d\n', length(authentication_results));
 fprintf('  - Hidden Layer Size: %d neurons\n', net.layers{1}.size);
-
-% Display training time if available
-if isfield(tr, 'time') && ~isempty(tr.time)
-    fprintf('  - Training Time: %.1f seconds\n', tr.time(end));
-end
 
 % Display next steps
 fprintf('\nNext steps for optimization:\n');

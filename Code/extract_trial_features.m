@@ -1,24 +1,29 @@
 function features = extract_trial_features(trial_data)
-    % RELIABLE feature extraction - ONLY TIME-DOMAIN FEATURES
-    % Guaranteed 85 features (6×13 + 4 + 3 = 85)
-    % trial_data: 30×7 matrix (columns: A=trial_id, B-G=sensor data)
+    % UPDATED FEATURE EXTRACTION FOR 128-SAMPLE SEGMENTS (4 seconds at 32 Hz)
+    % trial_data: 128×6 matrix (columns: accelerometer XYZ, gyroscope XYZ)
     
     % Validate input
     if nargin < 1 || isempty(trial_data)
         error('Invalid input to extract_trial_features');
     end
     
-    % Extract sensor data (columns 2-7)
-    sensor_data = trial_data(:, 2:7);
+    expected_samples = 128; % 4 seconds × 32 Hz
+    if size(trial_data, 1) ~= expected_samples
+        warning('Expected %d samples, got %d. Feature quality may be affected.', ...
+                expected_samples, size(trial_data, 1));
+    end
+    
+    % Extract sensor data (all 6 columns)
+    sensor_data = trial_data;
     
     % Initialize feature vector
     features = [];
     
-    % For each sensor channel (B through G)
+    % For each sensor channel (6 channels total)
     for channel = 1:6
         signal = sensor_data(:, channel);
         
-        % === TIME-DOMAIN FEATURES ONLY (13 features per channel) ===
+        % === TIME-DOMAIN FEATURES (15 features per channel) ===
         
         % 1. Basic Statistical Features
         mean_val = mean(signal);
@@ -48,43 +53,52 @@ function features = extract_trial_features(trial_data)
         zero_crossings = sum(diff(sign(signal)) ~= 0);
         zcr_normalized = zero_crossings / (length(signal) - 1);
         
-        % Combine all 13 features for this channel
+        % 7. Additional gait-specific features
+        % Signal Magnitude Area (SMA) - good for gait analysis
+        sma_val = sum(abs(signal)) / length(signal);
+        
+        % Combine all 16 features for this channel
         channel_features = [mean_val, std_val, variance, rms_val, ...
                            min_val, max_val, peak_to_peak, ...
                            skewness_val, kurtosis_val, ...
                            signal_energy, signal_power, ...
                            median_val, mad_val, iqr_val, ...
-                           zcr_normalized];
-        
-        % Safety check - ensure exactly 15 features per channel
-        if length(channel_features) ~= 15
-            error('Channel %d: Expected 15 features, got %d', channel, length(channel_features));
-        end
+                           zcr_normalized, sma_val];
         
         features = [features, channel_features];
     end
     
-    % === CROSS-CHANNEL FEATURES (4 features) ===
-    % Simple correlations between main accelerometer axes
+    % === CROSS-CHANNEL FEATURES (6 features) ===
     try
-        accel_corr = corr(sensor_data(:, 1:3)); % First 3 columns (accelerometer)
-        cross_features = [accel_corr(1,2), accel_corr(1,3), accel_corr(2,3)]; % XY, XZ, YZ correlations
+        % Accelerometer correlations
+        accel_corr = corr(sensor_data(:, 1:3));
+        cross_features = [accel_corr(1,2), accel_corr(1,3), accel_corr(2,3)];
+        
+        % Gyroscope correlations
+        gyro_corr = corr(sensor_data(:, 4:6));
+        cross_features = [cross_features, gyro_corr(1,2), gyro_corr(1,3), gyro_corr(2,3)];
     catch
-        cross_features = [0, 0, 0];
+        cross_features = zeros(1, 6);
     end
     
-    % === OVERALL FEATURES (3 features) ===
+    % === OVERALL FEATURES (6 features) ===
     overall_mean = mean(sensor_data(:));
     overall_std = std(sensor_data(:));
     overall_energy = sum(sensor_data(:).^2);
     
-    overall_features = [overall_mean, overall_std, overall_energy];
+    % Additional overall features
+    overall_range = max(sensor_data(:)) - min(sensor_data(:));
+    overall_abs_mean = mean(abs(sensor_data(:)));
+    overall_rms = rms(sensor_data(:));
     
-    % Final feature vector
+    overall_features = [overall_mean, overall_std, overall_energy, ...
+                       overall_range, overall_abs_mean, overall_rms];
+    
+    % Final feature vector: 6×16 + 6 + 6 = 96 + 12 = 108 features
     features = [features, cross_features, overall_features];
     
-    % Verify exact feature count: 6×15 + 3 + 3 = 90 + 3 + 3 = 96 features
-    expected_features = 96;
+    % Verify feature count
+    expected_features = 108;
     if length(features) ~= expected_features
         fprintf('Adjusting features from %d to %d\n', length(features), expected_features);
         if length(features) > expected_features
@@ -94,5 +108,5 @@ function features = extract_trial_features(trial_data)
         end
     end
     
-    fprintf('Extracted %d time-domain features\n', length(features));
+    fprintf('Extracted %d features from %d-sample segment\n', length(features), size(trial_data, 1));
 end

@@ -102,6 +102,18 @@ y_pred = net(X_test);
 accuracy = sum(predicted_labels == true_labels) / length(true_labels) * 100;
 fprintf('Test Accuracy: %.2f%%\n', accuracy);
 
+%% Enhanced Evaluation Metrics
+fprintf('\n--- Enhanced Evaluation Metrics ---\n');
+
+% Get prediction scores for ROC-AUC calculation
+y_pred_scores = net(X_test);  % This gives probability scores
+
+% Calculate comprehensive metrics
+metrics = enhanced_evaluation_metrics(true_labels, predicted_labels, y_pred_scores, num_classes);
+
+% Save enhanced metrics
+save('comprehensive_metrics.mat', 'metrics', 'true_labels', 'predicted_labels', 'y_pred_scores');
+
 % Confusion matrix
 figure;
 plotconfusion(y_test, y_pred);
